@@ -1,0 +1,16 @@
+node_modules
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.DS_Store
+out
+public/video.mp4
+public/sfx.wav
+work/
+*.mov
+*.mp4
+*.wav
+*.m4a
+*.srt
