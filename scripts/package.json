@@ -1,0 +1,8 @@
+{
+  "name": "chatgpt-arabic-reels-editor-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

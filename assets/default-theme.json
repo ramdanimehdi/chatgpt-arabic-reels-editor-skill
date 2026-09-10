@@ -1,0 +1,13 @@
+{
+  "bg": "#1A2A4A",
+  "ink": "#FFFFFF",
+  "acc": "#E8610A",
+  "clay": "#C94F08",
+  "mut": "#AAB3C3",
+  "font": "Cairo",
+  "handle": "@yourhandle",
+  "logo": "logo.svg",
+  "faceAnchor": 0.3,
+  "grade": false,
+  "demoScenes": false
+}
