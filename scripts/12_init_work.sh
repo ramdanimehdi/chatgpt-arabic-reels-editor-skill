@@ -13,6 +13,7 @@ copy_if_missing "$AS/default-sfx.json" sfx.json
 copy_if_missing "$AS/default-outro.json" outro.json
 copy_if_missing "$AS/default-stage.json" stage.json
 copy_if_missing "$AS/default-brief.json" brief.json
+copy_if_missing "$AS/default-visual-plan.json" visual-plan.json
 copy_if_missing "$AS/logo.svg" logo.svg
 copy_if_missing "$SC/compose.REFERENCE.html" compose.html
 if [ -n "$SRC" ]; then

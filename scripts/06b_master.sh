@@ -56,3 +56,5 @@ rm -f "$MIX" "$NRM"
 echo "✅ $OUT"
 ffmpeg -hide_banner -nostats -v info -i "$OUT" -af "loudnorm=I=$I:TP=-1.5:print_format=summary" -f null - 2>&1 | grep -E "Input Integrated|Input True Peak" || true
 ffprobe -v error -show_entries format=duration,size -of default=nw=1 "$OUT"
+SC="$(cd "$(dirname "$0")" && pwd)"
+python3 "$SC/17_verify_export.py" "$OUT" --work "$W"

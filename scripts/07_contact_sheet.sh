@@ -8,8 +8,15 @@ VID=""
 for n in reel-master.mp4 reel-final.mp4 ad-master.mp4 ad-final.mp4; do [ -f "$W/$n" ] && VID="$W/$n" && break; done
 for t in "$@"; do
   i=$((i+1)); f="$TMP/$(printf %02d $i).jpg"
-  if [ -n "$VID" ]; then ffmpeg -v error -ss "$t" -i "$VID" -frames:v 1 -vf "scale=300:-1" -y "$f"
-  else ffmpeg -v error -i "$W/prev/t$(printf %.2f $t).jpg" -vf "scale=300:-1" -y "$f"; fi
+  PV="$W/prev/t$(printf %.2f "$t").jpg"
+  # أثناء المراجعة قد تكون لقطة preview أحدث من الفيديو النهائي القديم؛ اعرض الأحدث فعلاً.
+  if [ -f "$PV" ] && { [ -z "$VID" ] || [ "$PV" -nt "$VID" ]; }; then
+    ffmpeg -v error -i "$PV" -vf "scale=300:-1" -y "$f"
+  elif [ -n "$VID" ]; then
+    ffmpeg -v error -ss "$t" -i "$VID" -frames:v 1 -vf "scale=300:-1" -y "$f"
+  else
+    echo "❌ لا توجد لقطة معاينة للوقت ${t}s ولا فيديو مرندر" >&2; exit 1
+  fi
   ffmpeg -v error -i "$f" -vf "drawtext=text='${t}s':x=8:y=8:fontsize=20:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw=5" -y "$f.l.jpg" 2>/dev/null || cp "$f" "$f.l.jpg"
   INPUTS+=( -i "$f.l.jpg" )
   col=$(( (i-1)%3 )); row=$(( (i-1)/3 )); pos="$((col*300))_$((row*534))"

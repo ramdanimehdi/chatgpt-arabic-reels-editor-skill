@@ -92,4 +92,6 @@ function resolveChrome(puppeteer){
     }
   }
   await b.close();
+  // اخرج بوضوح بعد إغلاق Chromium حتى لا يبقى الراسم معلقاً بسبب مؤقتات الصفحة.
+  setTimeout(()=>process.exit(0),300);
 })();

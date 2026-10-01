@@ -11,3 +11,5 @@ ffmpeg -v error -stats -framerate 30 -i "$W/out/%05d.jpg" -i "$W/cutz.mp4" -i "$
  -movflags +faststart -y "$OUT"
 echo "✅ $OUT"
 ffprobe -v error -show_entries format=duration,size -show_entries stream=width,height -of default=nw=1 "$OUT"
+SC="$(cd "$(dirname "$0")" && pwd)"
+python3 "$SC/17_verify_export.py" "$OUT" --work "$W"

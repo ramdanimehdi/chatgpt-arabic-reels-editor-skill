@@ -7,6 +7,8 @@
   "font": "Cairo",
   "handle": "@yourhandle",
   "logo": "logo.svg",
+  "capStyle": "card",
+  "visualMode": "editorial",
   "faceAnchor": 0.3,
   "grade": false,
   "demoScenes": false
