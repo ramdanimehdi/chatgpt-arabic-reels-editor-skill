@@ -70,3 +70,8 @@ bash scripts/12_init_work.sh ./work/my-reel /path/to/source-video.mp4
 ---
 
 An Arabic-first, RTL-aware reels editing skill for ChatGPT with a local rendering pipeline. It includes cut planning, timed captions, safe-zone checks, audio mastering, motion overlays, SRT export, and a local Chrome editor. No credentials, account identifiers, or publishing integrations are included.
+
+
+## إضافات موشن مجانية اختيارية
+
+أضيفت مكتبة Canvas2D محلية بثلاثة أنماط: عنوان شبكي، مسار عقد من اليمين لليسار، ورموز تسليم المحتوى. فعّلها للمشروع الجديد فقط عبر `motion-scenes.json`؛ لا يتغير السلوك السابق عند غياب الملف. تحتوي الحزمة أيضًا على فحص للنص والحركة ومراجع منتقاة من HyperFrames (Apache 2.0) وLemo (MIT) مع تراخيصها. لم تُثبّت محركاتهما الكاملة، ولا يلزم API أو خدمة توليد مدفوعة لهذه الإضافة. اقرأ [دليل الموشن](references/free-motion-upgrade.md). دمج الأنماط الجديدة كعناصر قابلة للتحرير في واجهة منشورة يحتاج محوّلًا واختبارًا منفصلًا.

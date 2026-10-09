@@ -12,9 +12,11 @@ let BG='#1A2A4A',INK='#FFFFFF',ACC='#E8610A',CLAY='#C94F08',MUT='#AAB3C3',FONT='
 let FACE_ANCH=0.30;   /* أين يقع وجه المتحدث داخل كرت الفيديو: 0 = فوق · 1 = تحت (theme.json ← faceAnchor) */
 let CAPS=[],VEND=0,OUTRO=0,DUR=0;
 let THEME={};
+let MOTIONPLAN={scenes:[]};
 let OUT_COPY={line:'',subline:'',recap:[],cta_top:'',cta_word:'',tail:''};
 function init(d){
   CAPS=d.cards;VEND=d.total;OUTRO=d.outro;DUR=VEND+OUTRO;
+  MOTIONPLAN=d.motion||{scenes:[]};
   BEHIND=d.behind||null;
   OUT_COPY={...OUT_COPY,...(d.outroCopy||{})};
   const t=d.theme||{}; THEME=t;
@@ -149,6 +151,7 @@ function drawCapWord(i,x,cy,t,fill,lift){
   X.restore();
 }
 function caption(t){
+  if(window.CFSMotion&&window.CFSMotion.activeScene(MOTIONPLAN,t)) return;
   /* لا تكرّر: لو الكلام يمرّ ورا الشخص بهاللحظة، كرت الكابشن يختفي */
   if(BEHIND&&PRS_OK&&vrect(t).r<=0.5&&BEHIND.lines.some(l=>t>=l.s&&t<=l.e)) return;
   const c=CAPS.find(c=>t>=c.s&&t<c.e); if(!c)return;
@@ -613,6 +616,7 @@ function draw(t){
      ['rtlBug',rtlBug],['rtlFix',rtlFix],['solved',solved],['oneFile',oneFile],
      ['commentBox',commentBox]].forEach(x=>safe(x[1],t,x[0]));
   }
+  window.CFSMotionMetadata=window.CFSMotion?window.CFSMotion.draw(X,MOTIONPLAN,t,THEME):{texts:[]};
   safe(caption,t,'caption'); safe(outro,t,'outro');
 }
 window.draw=draw;window.init=init;window.vrect=vrect;

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "scenes": [
+    {"id":"offer-types","start":2,"end":5,"kind":"grid-title","title":"دورة، استشارة، خدمة"},
+    {"id":"delivery","start":7,"end":11,"kind":"pictogram-delivery","title":"كيف يوصل المحتوى؟","labels":["الدورة","الشراء","الوصول"]},
+    {"id":"automation","start":14,"end":18,"kind":"blueprint-flow","title":"خطوات داخل نظام واحد","labels":["التسجيل","المتابعة","التسليم"]}
+  ]
+}

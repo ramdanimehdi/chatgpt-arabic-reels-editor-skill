@@ -10,6 +10,8 @@ const THEME=fs.existsSync(W+'theme.json')?JSON.parse(fs.readFileSync(W+'theme.js
 const BEHIND=fs.existsSync(W+'behind.json')?JSON.parse(fs.readFileSync(W+'behind.json','utf8')):null;  // الكلام ورا الشخص
 const OUT_COPY=fs.existsSync(W+'outro.json')?JSON.parse(fs.readFileSync(W+'outro.json','utf8')):{};
 const STAGE=fs.existsSync(W+'stage.json')?JSON.parse(fs.readFileSync(W+'stage.json','utf8')):[{s:0,e:9999,m:'FULL'}];
+const MOTION=fs.existsSync(W+'motion-scenes.json')?JSON.parse(fs.readFileSync(W+'motion-scenes.json','utf8')):null;
+const MOTION_META=[];
 const OUT_D=CFG.outro, FPS=30;
 function resolvePuppeteer(){
   for(const p of [process.env.PUPPETEER_PATH,'puppeteer-core','puppeteer',
@@ -45,7 +47,11 @@ function resolveChrome(puppeteer){
   await p.setViewport({width:1080,height:1920,deviceScaleFactor:1});
   await p.setCacheEnabled(false);   // لا تقرأ نسخة مخبّأة من compose.html
   await p.goto('file://'+W+'compose.html',{waitUntil:'networkidle0'});
-  await p.evaluate((c,o,t,b,oc,st)=>window.init({cards:c.cards,total:c.total,outro:o,theme:t,behind:b,outroCopy:oc,stage:st}),caps,OUT_D,THEME,BEHIND,OUT_COPY,STAGE);
+  if(MOTION){
+    require('./18_motion_library.js').validatePlan(MOTION,caps.total);
+    await p.addScriptTag({path:path.join(__dirname,'18_motion_library.js')});
+  }
+  await p.evaluate((c,o,t,b,oc,st,m)=>window.init({cards:c.cards,total:c.total,outro:o,theme:t,behind:b,outroCopy:oc,stage:st,motion:m}),caps,OUT_D,THEME,BEHIND,OUT_COPY,STAGE,MOTION);
   const FF=THEME.font||'Cairo';
   await p.evaluate(f=>Promise.all([document.fonts.load('900 100px '+f),
     document.fonts.load('700 40px '+f),document.fonts.load('800 55px '+f)]).then(()=>document.fonts.ready),FF);
@@ -62,6 +68,7 @@ function resolveChrome(puppeteer){
     }
     const d=await p.evaluate((t,q)=>{window.draw(t);return window.shot(q);},t,q);
     fs.writeFileSync(file,Buffer.from(d.split(',')[1],'base64'));
+    if(MOTION)MOTION_META.push({time:t,...await p.evaluate(()=>window.CFSMotionMetadata||{texts:[]})});
   };
   if(mode==='preview'){
     fs.mkdirSync(W+'prev',{recursive:true});
@@ -91,6 +98,7 @@ function resolveChrome(puppeteer){
       if(miss)console.log('⚠️ ناقص',miss,'فريماً — أعد التشغيل قبل 06_encode.sh');
     }
   }
+  if(MOTION)fs.writeFileSync(W+'motion-metadata.json',JSON.stringify(MOTION_META));
   await b.close();
   // اخرج بوضوح بعد إغلاق Chromium حتى لا يبقى الراسم معلقاً بسبب مؤقتات الصفحة.
   setTimeout(()=>process.exit(0),300);
