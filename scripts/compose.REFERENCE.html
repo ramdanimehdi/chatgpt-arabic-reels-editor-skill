@@ -153,8 +153,16 @@ function drawCapWord(i,x,cy,t,fill,lift){
 function caption(t){
   if(window.CFSMotion&&window.CFSMotion.activeScene(MOTIONPLAN,t)) return;
   /* لا تكرّر: لو الكلام يمرّ ورا الشخص بهاللحظة، كرت الكابشن يختفي */
-  if(BEHIND&&PRS_OK&&vrect(t).r<=0.5&&BEHIND.lines.some(l=>t>=l.s&&t<=l.e)) return;
-  const c=CAPS.find(c=>t>=c.s&&t<c.e); if(!c)return;
+  if(BEHIND&&!BEHIND.partialCaptions&&PRS_OK&&vrect(t).r<=0.5&&BEHIND.lines.some(l=>t>=l.s&&t<=l.e)) return;
+  let c=CAPS.find(c=>t>=c.s&&t<c.e); if(!c)return;
+  // Opt-in only after the behind-text scene was visually verified. Preserve
+  // original word timing and restore all captions if that layout is disabled.
+  if(BEHIND&&BEHIND.partialCaptions&&vrect(t).r<=0.5){
+    const ci=CAPS.indexOf(c),covered=BEHIND.lines.filter(l=>l.verified===true&&l.card===ci&&t>=l.s&&(t>l.e||PRS_OK)&&vrect(l.s).r<=0.5);
+    const words=c.w.filter(w=>!covered.some(l=>l.words.some(v=>Math.abs(v.s-w.s)<.01&&Math.abs(v.e-w.e)<.01)));
+    if(!words.length)return;
+    c={...c,w:words};
+  }
   const lt=t-c.s,rt=c.e-t;let a=1,dy=0,sc=1;
   if(lt<0.2){const k=lt/0.2;a=ease(k);dy=(1-ease(k))*28;sc=0.93+0.07*back(k);}
   if(rt<0.13){const k=rt/0.13;a=k;dy=-(1-k)*10;}
@@ -624,3 +632,4 @@ window.setFrame=src=>{ /* decode() بعد إسناد المصدر = ضمان إ�
   VF.src=src; return (VF.decode?VF.decode():Promise.resolve()).catch(()=>{}); };
 window.shot=q=>document.getElementById('cv').toDataURL('image/jpeg',q);
 </script></body></html>
+

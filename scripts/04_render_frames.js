@@ -11,8 +11,10 @@ const BEHIND=fs.existsSync(W+'behind.json')?JSON.parse(fs.readFileSync(W+'behind
 const OUT_COPY=fs.existsSync(W+'outro.json')?JSON.parse(fs.readFileSync(W+'outro.json','utf8')):{};
 const STAGE=fs.existsSync(W+'stage.json')?JSON.parse(fs.readFileSync(W+'stage.json','utf8')):[{s:0,e:9999,m:'FULL'}];
 const MOTION=fs.existsSync(W+'motion-scenes.json')?JSON.parse(fs.readFileSync(W+'motion-scenes.json','utf8')):null;
+if(MOTION&&fs.existsSync(W+'audio-envelope.json'))MOTION.envelope=JSON.parse(fs.readFileSync(W+'audio-envelope.json','utf8'));
 const MOTION_META=[];
-const OUT_D=CFG.outro, FPS=30;
+const OUT_D=Number(CFG.outro??0), FPS=30;
+if(!Number.isFinite(OUT_D)||OUT_D<0)throw new Error('Invalid outro duration');
 function resolvePuppeteer(){
   for(const p of [process.env.PUPPETEER_PATH,'puppeteer-core','puppeteer',
       path.join(__dirname,'node_modules/puppeteer-core'),
@@ -39,9 +41,11 @@ function resolveChrome(puppeteer){
   const mode=process.argv[3]||'all';
   const caps=JSON.parse(fs.readFileSync(W+'caps.json','utf8'));
   const NVF=fs.readdirSync(W+'vfr').filter(f=>f.endsWith('.jpg')).length;
-  const dur=caps.total+OUT_D;
+  const dur=Number(caps.total)+OUT_D;
+  if(!Number.isFinite(dur)||dur<=0||NVF<1)throw new Error('Invalid duration or missing source frames');
   const b=await puppeteer.launch({executablePath:CHROME,headless:'new',
     args:['--no-sandbox','--allow-file-access-from-files','--font-render-hinting=none','--force-color-profile=srgb']});
+  try {
   const p=await b.newPage();
   p.on('pageerror',e=>console.log('PAGEERR',e.message));
   await p.setViewport({width:1080,height:1920,deviceScaleFactor:1});
@@ -53,8 +57,13 @@ function resolveChrome(puppeteer){
   }
   await p.evaluate((c,o,t,b,oc,st,m)=>window.init({cards:c.cards,total:c.total,outro:o,theme:t,behind:b,outroCopy:oc,stage:st,motion:m}),caps,OUT_D,THEME,BEHIND,OUT_COPY,STAGE,MOTION);
   const FF=THEME.font||'Cairo';
-  await p.evaluate(f=>Promise.all([document.fonts.load('900 100px '+f),
-    document.fonts.load('700 40px '+f),document.fonts.load('800 55px '+f)]).then(()=>document.fonts.ready),FF);
+  const fontOK=await p.evaluate(async f=>{
+    const weights=['400','600','700','800','900'];
+    await Promise.all(weights.map(w=>document.fonts.load(w+' 60px '+f,'عربي ـ 123')));
+    await document.fonts.ready;
+    return (await document.fonts.load('800 60px '+f,'عربي')).length>0&&weights.every(w=>document.fonts.check(w+' 60px '+f,'عربي'));
+  },FF);
+  if(!fontOK)throw new Error('Arabic font did not load; export stopped to avoid fallback text');
   await p.evaluate(()=>new Promise(r=>{const l=document.getElementById('LOGO');if(l.complete)return r();l.onload=r;l.onerror=r;}));
   const grab=async(t,file,q)=>{
     const i=Math.min(NVF,Math.max(1,Math.round(t*FPS)+1));
@@ -77,6 +86,8 @@ function resolveChrome(puppeteer){
     fs.mkdirSync(W+'out',{recursive:true});
     const n=Math.round(dur*FPS);
     const force=process.argv.includes('--force');
+    const cache=require('./21_render_cache.js').prepare(W,mode,n,[__filename,path.join(__dirname,'18_motion_library.js')],force);
+    if(cache.invalidated)console.log('Design changed: refreshing cached output frames');
     let i0=0,i1=n;                       // نافذة زمنية اختيارية — تُعاد كتابتها دائماً
     if(mode==='range'){
       const a=Number(process.argv[4]), b=Number(process.argv[5]);
@@ -95,11 +106,12 @@ function resolveChrome(puppeteer){
     console.log('تم',drawn,'فريم مرسوم من',n,'— المدة',dur.toFixed(3));
     if(mode!=='range'){                  // ناقص فريم = تجميع مكسور، لازم ينكشف الحين
       let miss=0; for(let i=0;i<n;i++) if(!done(W+'out/'+String(i).padStart(5,'0')+'.jpg')) miss++;
-      if(miss)console.log('⚠️ ناقص',miss,'فريماً — أعد التشغيل قبل 06_encode.sh');
+      if(miss||drawn+skipped===0)throw new Error('Incomplete export: '+miss+' missing frames');
     }
   }
   if(MOTION)fs.writeFileSync(W+'motion-metadata.json',JSON.stringify(MOTION_META));
-  await b.close();
+  } finally { await b.close(); }
   // اخرج بوضوح بعد إغلاق Chromium حتى لا يبقى الراسم معلقاً بسبب مؤقتات الصفحة.
   setTimeout(()=>process.exit(0),300);
-})();
+})().catch(e=>{console.error(e.message);process.exit(1);});
+

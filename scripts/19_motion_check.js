@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path'),motion=require('./18_motion_library.
 const work=path.resolve(process.argv[2]||'.');
 const plan=JSON.parse(fs.readFileSync(path.join(work,'motion-scenes.json'),'utf8'));
 const total=JSON.parse(fs.readFileSync(path.join(work,'caps.json'),'utf8')).total;
+if(fs.existsSync(path.join(work,'audio-envelope.json')))plan.envelope=JSON.parse(fs.readFileSync(path.join(work,'audio-envelope.json'),'utf8'));
 motion.validatePlan(plan,total);
 const times=motion.sampleTimes(plan,total);
 fs.writeFileSync(path.join(work,'motion-preview-times.json'),JSON.stringify(times,null,2));

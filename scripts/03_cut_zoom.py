@@ -2,7 +2,7 @@
 """قص السكتات + زوم مختلف لكل مقطع + تدرّج دافئ.  python3 03_cut_zoom.py <workdir>"""
 import json, subprocess, sys, os, math
 W=os.path.abspath(sys.argv[1]); SRC=os.path.join(W,"src.mov")
-k=json.load(open(os.path.join(W,"cut.json")))["keep"]
+CUT=json.load(open(os.path.join(W,"cut.json")));k=CUT["keep"]
 _tp=os.path.join(W,"theme.json")
 THEME=json.load(open(_tp)) if os.path.exists(_tp) else {}
 GRADE=THEME.get("grade",False)
@@ -63,17 +63,28 @@ for i,pair in enumerate(k):
     if not (math.isfinite(s) and math.isfinite(e)) or s<0 or e<=s:
         raise SystemExit(f"❌ حدود القص {i+1} غير صالحة: {pair}")
     s=math.floor(s*30)/30; e=math.ceil(e*30)/30
-    if s<prev: s=prev
+    if not CUT.get("allowReorder",False) and s<prev: s=prev
     if e-s<0.10:
         raise SystemExit(f"❌ مقطع القص {i+1} أقصر من 0.10ث بعد محاذاة الفريم")
     aligned.append((s,e)); prev=e
 k=aligned
+# Preserve the existing first-run rhythm, then bind zooms to source segment starts.
+import importlib.util
+_spec=importlib.util.spec_from_file_location('cfs_zoom_lock',os.path.join(os.path.dirname(__file__),'22_zoom_lock.py'))
+_zl=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(_zl)
+_candidates=[];zi=0;held=0.0
+for i,(s,e) in enumerate(k):
+    if i and (not CALM or held>=MINHOLD):zi+=1;held=0.0
+    held+=e-s;_candidates.append(Z[zi%len(Z)])
+_st=os.stat(os.path.join(W,'src.mov'))
+ZS=_zl.locked_zooms(CUT,k,_candidates,f'{_st.st_size}:{_st.st_mtime_ns}')
+with open(os.path.join(W,'cut.json'),'w') as f:json.dump(CUT,f,ensure_ascii=False,indent=2)
 fc=[];v=[];a=[]
 zi=0; held=0.0
 for i,(s,e) in enumerate(k):
     if i and (not CALM or held>=MINHOLD): zi+=1; held=0.0
     held+=(e-s)
-    z=Z[zi%len(Z)]
+    z=ZS[i]
     target=1080/1920
     if SW/SH > target:
         base_h=SH; base_w=int(base_h*target)
@@ -102,3 +113,4 @@ fc.append("[ac]afade=t=in:st=0:d=0.06,dynaudnorm=f=200:g=5:p=0.9[ao]")
 sys.exit(subprocess.call(["ffmpeg","-v","error","-stats","-i",SRC,"-filter_complex",";".join(fc),
  "-map","[vo]","-map","[ao]","-c:v","libx264","-preset","medium","-crf","16",
  "-c:a","aac","-b:a","192k","-movflags","+faststart","-y",os.path.join(W,"cutz.mp4")]))
+

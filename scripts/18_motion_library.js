@@ -9,7 +9,7 @@
   const progress=(t,a,b)=>clamp((t-a)/(b-a));
   const ease=x=>1-Math.pow(1-clamp(x),3);
   const smooth=x=>{x=clamp(x);return x*x*(3-2*x);};
-  const kinds=new Set(['grid-title','blueprint-flow','pictogram-delivery']);
+  const kinds=new Set(['grid-title','blueprint-flow','pictogram-delivery','highlight','checklist','notifications','compare','voice-wave']);
   const western=s=>String(s).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776));
   function validatePlan(plan,total=Infinity){
     if(!plan||!Array.isArray(plan.scenes)) throw new Error('motion-scenes.json requires scenes[]');
@@ -19,8 +19,12 @@
         throw new Error('Motion scene requires valid times and at least 2.2 seconds');
       if(!kinds.has(s.kind)) throw new Error('Unknown motion kind: '+s.kind);
       if(typeof s.title!=='string'||!s.title.trim()||s.title.length>70) throw new Error('Use a short title');
-      if(s.kind!=='grid-title'&&(!Array.isArray(s.labels)||s.labels.length!==3||s.labels.some(x=>typeof x!=='string'||!x.trim()||x.length>22)))
-        throw new Error('Flow and delivery require exactly three short labels');
+      const count=s.kind==='compare'?2:3;
+      if(!['grid-title','highlight','voice-wave'].includes(s.kind)&&(!Array.isArray(s.labels)||s.labels.length!==count||s.labels.some(x=>typeof x!=='string'||!x.trim()||x.length>22)))
+        throw new Error('Use '+count+' short labels for '+s.kind);
+      if(s.surface&&!['clean','paper','blueprint'].includes(s.surface))throw new Error('Unknown motion surface');
+      if(s.kind==='voice-wave'&&(!plan.envelope||!Number.isFinite(plan.envelope.fps)||plan.envelope.fps<=0||!Array.isArray(plan.envelope.values)||plan.envelope.values.some(v=>!Number.isFinite(v)||v<0||v>1)))
+        throw new Error('Generate audio-envelope.json from the clean audio before using voice-wave');
       if(i&&s.start<sorted[i-1].end) throw new Error('Motion scenes overlap');
       const r=s.box||{x:70,y:1110,w:820,h:360};
       if(![r.x,r.y,r.w,r.h].every(Number.isFinite)||r.w<600||r.h<300||r.x<40||r.y<150||r.x+r.w>900||r.y+r.h>1620)
@@ -48,6 +52,14 @@
     const alpha=ease(progress(lt,0,.22))*progress(s.end-t,0,.18);
     ctx.save();ctx.globalAlpha*=alpha;ctx.direction='rtl';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,28);ctx.fill();
+    // Deterministic surface details; retain the current brand palette and font.
+    if(s.surface==='paper'){
+      ctx.save();ctx.strokeStyle=ink;ctx.globalAlpha*=.12;ctx.setLineDash([9,7]);ctx.lineWidth=2;ctx.strokeRect(r.x+9,r.y+9,r.w-18,r.h-18);ctx.restore();
+    }else if(s.surface==='blueprint'){
+      ctx.save();ctx.strokeStyle=ink;ctx.globalAlpha*=.07;ctx.lineWidth=1;
+      for(let x=r.x+20;x<r.x+r.w;x+=40){ctx.beginPath();ctx.moveTo(x,r.y+10);ctx.lineTo(x,r.y+r.h-10);ctx.stroke();}
+      for(let y=r.y+20;y<r.y+r.h;y+=40){ctx.beginPath();ctx.moveTo(r.x+10,y);ctx.lineTo(r.x+r.w-10,y);ctx.stroke();}ctx.restore();
+    }
     ctx.save();ctx.beginPath();ctx.rect(r.x+16,r.y+16,r.w-32,r.h-32);ctx.clip();
     const text=(value,x,y,size,maxw)=>{
       value=western(value);ctx.font='800 '+size+'px '+font;
@@ -60,6 +72,30 @@
       ctx.save();ctx.beginPath();ctx.rect(r.x+r.w*(1-k),r.y,r.w*k,r.h);ctx.clip();
       text(s.title,r.x+r.w/2,r.y+r.h/2,70,r.w-90);ctx.restore();
       ctx.fillStyle=acc;ctx.fillRect(r.x+r.w-40,r.y+36,7,(r.h-72)*k);
+    }else if(s.kind==='highlight'){
+      const k=ease(progress(lt,.15,.65));ctx.fillStyle=acc;
+      ctx.fillRect(r.x+40+r.w*.82*(1-k),r.y+r.h*.6,r.w*.82*k,14);
+      text(s.title,r.x+r.w/2,r.y+r.h*.45,64,r.w-90);
+    }else if(s.kind==='voice-wave'){
+      text(s.title,r.x+r.w/2,r.y+58,42,r.w-70);
+      const env=plan.envelope,idx=Math.floor(t*env.fps),at=i=>env.values[Math.max(0,Math.min(env.values.length-1,i))]||0;
+      ctx.fillStyle=acc;
+      for(let i=0;i<35;i++){const h=8+Math.min(135,at(idx-Math.abs(i-17))*135),x=r.x+55+i*(r.w-110)/34;ctx.fillRect(x-5,r.y+r.h*.6-h/2,10,h);}
+    }else if(s.kind==='checklist'||s.kind==='notifications'){
+      text(s.title,r.x+r.w/2,r.y+48,40,r.w-70);
+      s.labels.forEach((label,i)=>{
+        const k=ease(progress(lt,.15+i*.2,.5+i*.2));ctx.save();ctx.globalAlpha*=k;
+        const y=r.y+115+i*77,dx=s.kind==='notifications'?(1-k)*70:0;
+        ctx.translate(dx,0);ctx.strokeStyle=acc;ctx.lineWidth=3;
+        if(s.kind==='notifications'){ctx.beginPath();ctx.roundRect(r.x+45,y-29,r.w-90,61,12);ctx.stroke();}
+        else{ctx.beginPath();ctx.moveTo(r.x+r.w-86,y);ctx.lineTo(r.x+r.w-77,y+10);ctx.lineTo(r.x+r.w-60,y-12);ctx.stroke();}
+        text(label,r.x+r.w/2-(s.kind==='checklist'?20:0),y,34,r.w-190);ctx.restore();
+      });
+    }else if(s.kind==='compare'){
+      text(s.title,r.x+r.w/2,r.y+55,42,r.w-70);
+      const k=ease(progress(lt,.25,.85));
+      ctx.strokeStyle=acc;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(r.x+r.w/2,r.y+105);ctx.lineTo(r.x+r.w/2,r.y+105+(r.h-145)*k);ctx.stroke();
+      s.labels.forEach((label,i)=>{const x=r.x+r.w*(i===0?.75:.25);text(label,x,r.y+r.h*.58,42,r.w*.4);});
     }else{
       text(s.title,r.x+r.w/2,r.y+54,42,r.w-70);
       const nodeY=r.y+r.h*.52,step=(r.w-170)/2,xs=[r.x+r.w-85,r.x+r.w-85-step,r.x+85];
